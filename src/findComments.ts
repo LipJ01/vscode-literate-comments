@@ -1,7 +1,8 @@
-import { TextDocument, Uri, Range, Position } from 'vscode';
+import { Uri, Range, Position } from 'vscode';
 import { commands } from 'vscode';
 import { iterateSemantics } from './semantics';
 
+// TODO: take line by line from document instead of copying
 export class LineMap {
   private lines: string[];
   private emptyLines: boolean[];
@@ -67,8 +68,7 @@ async function symbolRanges(uri: Uri, lineMap: LineMap) {
   }
 }
 
-export async function findCommentLines(document: TextDocument, lineMap: LineMap) {
-  // const lineMap = new LineMap(document.getText());
+export async function findCommentLines(uri: Uri, lineMap: LineMap) {
   const commentLines = new Set<number>();
   for (let i = 0; i < lineMap.count(); i++)
     if (!lineMap.empty(i)) commentLines.add(i);
@@ -78,12 +78,12 @@ export async function findCommentLines(document: TextDocument, lineMap: LineMap)
     }
   }
   // removeRanges(await semanticRanges(document.uri, lineMap));
-  removeRanges(await symbolRanges(document.uri, lineMap));
+  removeRanges(await symbolRanges(uri, lineMap));
   return Array.from(commentLines.values()).sort((a, b) => a - b);
 }
 
-export async function findCommentRanges(document: TextDocument, lineMap: LineMap) {
-  const lines = await findCommentLines(document, lineMap);
+export async function findCommentRanges(uri: Uri, lineMap: LineMap) {
+  const lines = await findCommentLines(uri, lineMap);
   return lines.reduce<Range[]>((result, line) => {
     if (result.length === 0) {
       result.push(new Range(line, 0, line, lineMap.length(line) - 1));

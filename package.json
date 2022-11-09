@@ -1,6 +1,6 @@
 {
-  "name": "md-comments",
-  "displayName": "md-comments",
+  "name": "markdown-comments",
+  "displayName": "Markdown comments",
   "description": "Treat source files as Markdown documents",
   "version": "0.0.1",
   "engines": {
@@ -16,14 +16,9 @@
   "contributes": {
     "commands": [
       {
-          "title": "Enable MarkdownLens",
-          "command": "md-comments.enable",
-          "category": "MarkdownLens"
-      },
-      {
-          "title": "Disable MarkdownLens",
-          "command": "md-comments.disable",
-          "category": "MarkdownLens"
+        "title": "Preview as Markdown",
+        "command": "markdown-comments.preview",
+        "category": "Markdown Comments"
       }
     ]
   },

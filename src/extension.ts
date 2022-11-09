@@ -1,17 +1,12 @@
-import { commands, ExtensionContext, languages, workspace } from 'vscode';
-import { openMarkdown } from './markdownAction';
-import { MarkdownLensProvider } from './MarkdownLensProvider';
+import { commands, ExtensionContext, window } from 'vscode';
+import { executeAction } from './markdownAction';
 
 export function activate(context: ExtensionContext) {
 	context.subscriptions.push(...[
-		languages.registerCodeLensProvider("*", new MarkdownLensProvider()),
-		commands.registerCommand("md-comments.enable", () => {
-			workspace.getConfiguration("md-comments").update("enableCodeLens", true, true);
+		commands.registerCommand("markdown-comments.preview", () => {
+			const editor = window.activeTextEditor;;
+			if (editor && editor.viewColumn) executeAction(editor.document, editor.viewColumn);
 		}),
-		commands.registerCommand("md-comments.disable", () => {
-			workspace.getConfiguration("md-comments").update("enableCodeLens", false, true);
-		}),
-		commands.registerCommand("md-comments.codelensAction", openMarkdown),
 	]);
 }
 
