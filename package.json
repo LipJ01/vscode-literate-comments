@@ -10,14 +10,20 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:md-comments.helloWorld"
+    "*"
   ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "md-comments.helloWorld",
-        "title": "Hello World"
+          "title": "Enable MarkdownLens",
+          "command": "md-comments.enable",
+          "category": "MarkdownLens"
+      },
+      {
+          "title": "Disable MarkdownLens",
+          "command": "md-comments.disable",
+          "category": "MarkdownLens"
       }
     ]
   },
