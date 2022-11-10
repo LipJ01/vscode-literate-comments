@@ -1,11 +1,14 @@
-import { Uri, Range, Position, TextDocument } from 'vscode';
+import { Uri, Range, Position, TextDocument, SymbolInformation, DocumentSymbol, ColorInformation } from 'vscode';
 import { commands } from 'vscode';
 
 async function symbolRanges(uri: Uri) {
-  const symbols = await commands.executeCommand('vscode.executeDocumentSymbolProvider', uri) as ({ range: Range}[]);
+  const symbols: Array<SymbolInformation | DocumentSymbol> = await commands.executeCommand('vscode.executeDocumentSymbolProvider', uri);
   return function*() {
     for (const symbol of symbols) {
-      yield symbol.range;
+      if (symbol instanceof SymbolInformation)
+        yield symbol.location.range;
+      else
+        yield symbol.range;
     }
   }();
 }
