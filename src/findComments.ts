@@ -1,14 +1,52 @@
-import { Uri, Range, Position } from 'vscode';
+import { Uri, Range, Position, TextDocument } from 'vscode';
 import { commands } from 'vscode';
 
-// TODO: take line by line from document instead of copying
-export class LineMap {
-  private lines: string[];
-  private emptyLines: boolean[];
+async function symbolRanges(uri: Uri) {
+  const symbols = await commands.executeCommand('vscode.executeDocumentSymbolProvider', uri) as ({ range: Range}[]);
+  return function*() {
+    for (const symbol of symbols) {
+      yield symbol.range;
+    }
+  }();
+}
 
-  constructor(text: string) {
-    this.lines = text.split('\n');
-    this.emptyLines = this.lines.map(line => line.match(/^\s*$/) !== null);
+function rangesToLines(ranges: Iterable<Range>) {
+  const result = new Set<number>();
+  for (const r of ranges)
+    for (let line = r.start.line; line <= r.end.line; line++) result.add(line);
+  return result;
+}
+
+export enum LineType {
+  Code,
+  Comment,
+  Empty
+};
+
+export type TypeRange = {
+  type: LineType,
+  start: number,
+  end: number
+};
+
+export class DocumentMap {
+  private document: TextDocument;
+  private types: LineType[];
+
+  private constructor(document: TextDocument, types: LineType[]) {
+    this.document = document;
+    this.types = types;
+  }
+
+  static async build(document: TextDocument) {
+    const symbolLines = rangesToLines(await symbolRanges(document.uri));
+    const lineTypes = new Array(document.lineCount).fill(LineType.Empty).map((_, i) => {
+      const line = document.lineAt(i);
+      if (line.isEmptyOrWhitespace) return LineType.Empty;
+      else if (symbolLines.has(i)) return LineType.Code;
+      else return LineType.Comment;
+    });
+    return new DocumentMap(document, lineTypes);
   }
 
   range(): Range {
@@ -16,19 +54,34 @@ export class LineMap {
   }
 
   count(): number {
-    return this.lines.length;
+    return this.document.lineCount;
   }
 
   length(line: number) {
-    return this.lines[line].length;
+    return this.document.lineAt(line).text.length;
   }
 
   text(line: number) {
-    return this.lines[line];
+    return this.document.lineAt(line).text;
   }
 
-  empty(line: number) {
-    return this.emptyLines[line];
+  type(line: number) {
+    return this.types[line];
+  }
+
+  typeRanges(): TypeRange[] {
+    const result: TypeRange[] = [];
+    if (this.document.lineCount === 0) return result;
+    let range: TypeRange = { type: this.type(0), start: 0, end: 0};
+    for (let i = 0; i < this.document.lineCount; i++) {
+      const type = this.type(i);
+      if (range.type === type) range.end = i;
+      else {
+        result.push(range);
+        range = { type, start: i, end: i};
+      }
+    }
+    return result;
   }
 
   move(position: Position, distance: number): Position {
@@ -44,44 +97,4 @@ export class LineMap {
     }
     return new Position(line, character + remainingDistance);
   }
-}
-
-async function symbolRanges(uri: Uri) {
-  const symbols = await commands.executeCommand('vscode.executeDocumentSymbolProvider', uri) as ({ range: Range}[]);
-  return function*() {
-    for (const symbol of symbols) {
-      yield symbol.range;
-    }
-  }
-}
-
-export async function findCommentLines(uri: Uri, lineMap: LineMap) {
-  const commentLines = new Set<number>();
-  for (let i = 0; i < lineMap.count(); i++)
-    if (!lineMap.empty(i)) commentLines.add(i);
-  function removeRanges(ranges: () => Iterable<Range>) {
-    for (const range of ranges()) {
-      for (let i = range.start.line; i <= range.end.line; i++) commentLines.delete(i);
-    }
-  }
-  removeRanges(await symbolRanges(uri));
-  return Array.from(commentLines.values()).sort((a, b) => a - b);
-}
-
-export async function findCommentRanges(uri: Uri, lineMap: LineMap) {
-  const lines = await findCommentLines(uri, lineMap);
-  return lines.reduce<Range[]>((result, line) => {
-    if (result.length === 0) {
-      result.push(new Range(line, 0, line, lineMap.length(line) - 1));
-    }
-    else {
-      const lastRange = result[result.length - 1];
-      const lastLine = lastRange.end.line;
-      if (line === lastLine + 1)
-        result[result.length - 1] = new Range(lastRange.start, new Position(line, lineMap.length(line) - 1));
-      else
-        result.push(new Range(line, 0, line, lineMap.length(line) - 1));
-    }
-    return result;
-  }, []);
 }

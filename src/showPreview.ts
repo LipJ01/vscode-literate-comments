@@ -1,5 +1,5 @@
 import { commands, TextDocument, ViewColumn, window } from "vscode";
-import { findCommentRanges, LineMap } from "./findComments";
+import { DocumentMap, LineType, TypeRange } from "./findComments";
 
 function wrapHtmlBody(body: string) {
   return `<html>
@@ -8,13 +8,44 @@ function wrapHtmlBody(body: string) {
   </html>`;
 }
 
+type DefinedTypeRange = TypeRange & {type: LineType.Code | LineType.Comment};
+function mergeEmpty(ranges: TypeRange[]): Array<DefinedTypeRange> {
+  const result = new Array<DefinedTypeRange>();
+  for (let i = 0; i < ranges.length; i++) {
+    const range = ranges[i];
+    if (range.type === LineType.Empty) {
+      const prev = result[result.length - 1];
+      const next = ranges.at(i + 1);
+      const edge = !prev || !next;
+      if (edge) {
+        const target = prev ?? next!;
+        target.start = Math.min(target.start, range.start);
+        target.end = Math.max(target.end, range.end);
+      }
+      else if(prev.type === next.type) {
+        prev.end = next.end;
+        i++;
+      }
+      else {
+        if (prev.type === LineType.Comment)
+          prev.end = range.end;
+        else
+          next.start = range.start;
+      }
+    }
+    else result.push(range as DefinedTypeRange);
+  }
+  return result;
+}
+
 async function renderHtml(document: TextDocument) {
-  const lineMap = new LineMap(document.getText());
-  const ranges = await findCommentRanges(document.uri, lineMap);
+  const documentMap = await DocumentMap.build(document);
+  
   let content = '';
+
   function appendLines(start: number, end: number) {
     for (let i = start; i <= end; i++) {
-      content += lineMap.text(i);
+      content += documentMap.text(i);
       content += "\n";
     }
   }
@@ -27,16 +58,11 @@ async function renderHtml(document: TextDocument) {
       content += "```\n";
     }
   }
-  {
-    let line = 0;
-    for (const range of ranges) {
-      const start = range.start.line;
-      const end = range.end.line;
-      appendCode(line, start - 1);
-      appendLines(start, end);
-      line = end + 1;
-    }
-    appendCode(line, lineMap.count() - 1);
+
+  const ranges = mergeEmpty(documentMap.typeRanges());
+  for (const range of ranges) {
+    if (range.type === LineType.Code) appendCode(range.start, range.end);
+    else appendLines(range.start, range.end);
   }
   const body: string = await commands.executeCommand('markdown.api.render', content);
   return wrapHtmlBody(body);

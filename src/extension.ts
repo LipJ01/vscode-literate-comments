@@ -1,4 +1,4 @@
-import { commands, ExtensionContext, extensions, ViewColumn, window } from 'vscode';
+import { commands, ExtensionContext, ViewColumn, window } from 'vscode';
 import { showPreview } from './showPreview';
 
 export function activate(context: ExtensionContext) {
