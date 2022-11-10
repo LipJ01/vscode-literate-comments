@@ -1,6 +1,6 @@
 {
   "name": "markdown-comments",
-  "displayName": "Markdown comments",
+  "displayName": "Commenst as Markdown",
   "description": "Treat source files as Markdown documents",
   "version": "0.0.1",
   "engines": {
@@ -18,7 +18,12 @@
       {
         "title": "Preview as Markdown",
         "command": "markdown-comments.preview",
-        "category": "Markdown Comments"
+        "category": "Comments as Markdown"
+      },
+      {
+        "title": "Preview as Markdown to the side",
+        "command": "markdown-comments.previewToSide",
+        "category": "Comments as Markdown"
       }
     ]
   },

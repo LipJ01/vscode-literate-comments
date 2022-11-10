@@ -1,7 +1,14 @@
 import { commands, TextDocument, ViewColumn, window } from "vscode";
 import { findCommentRanges, LineMap } from "./findComments";
 
-export async function renderMarkdownHtml(document: TextDocument) {
+function wrapHtmlBody(body: string) {
+  return `<html>
+  <head></head>
+  <body>${body}</body>
+  </html>`;
+}
+
+async function renderHtml(document: TextDocument) {
   const lineMap = new LineMap(document.getText());
   const ranges = await findCommentRanges(document.uri, lineMap);
   let content = '';
@@ -31,18 +38,18 @@ export async function renderMarkdownHtml(document: TextDocument) {
     }
     appendCode(line, lineMap.count() - 1);
   }
-  const html: string = await commands.executeCommand('markdown.api.render', content);
-  return html;
+  const body: string = await commands.executeCommand('markdown.api.render', content);
+  return wrapHtmlBody(body);
 }
 
-export async function executeAction(document: TextDocument, column: ViewColumn) {
-  const html = await renderMarkdownHtml(document);
-  const panel = window.createWebviewPanel('markdown.preview', 'Comments as Markdow', column);
+export async function showPreview(document: TextDocument, column: ViewColumn) {
+  const html = await renderHtml(document);
+  const panel = window.createWebviewPanel('markdown.preview', 'Comments as Markdown', column);
   panel.webview.html = html;
   const changeDisposable = window.onDidChangeTextEditorSelection(async e => {
     if (e.textEditor.document !== document) return;
     if (!panel.visible) return;
-    panel.webview.html = await renderMarkdownHtml(document);
+    panel.webview.html = await renderHtml(document);
   });
   panel.onDidDispose(_ => changeDisposable.dispose());
 }
