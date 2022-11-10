@@ -1,6 +1,5 @@
 import { Uri, Range, Position } from 'vscode';
 import { commands } from 'vscode';
-import { iterateSemantics } from './semantics';
 
 // TODO: take line by line from document instead of copying
 export class LineMap {
@@ -47,19 +46,7 @@ export class LineMap {
   }
 }
 
-async function semanticRanges(uri: Uri, lineMap: LineMap) {
-  const tokenIterator = await iterateSemantics(uri);
-  return function*() {
-    for (const token of tokenIterator) {
-      if (token.type === 'comment') continue;
-      const start = new Position(token.line, token.start);
-      const end = lineMap.move(start, token.length);
-      yield new Range(start, end);
-    }
-  }
-}
-
-async function symbolRanges(uri: Uri, lineMap: LineMap) {
+async function symbolRanges(uri: Uri) {
   const symbols = await commands.executeCommand('vscode.executeDocumentSymbolProvider', uri) as ({ range: Range}[]);
   return function*() {
     for (const symbol of symbols) {
@@ -77,8 +64,7 @@ export async function findCommentLines(uri: Uri, lineMap: LineMap) {
       for (let i = range.start.line; i <= range.end.line; i++) commentLines.delete(i);
     }
   }
-  // removeRanges(await semanticRanges(document.uri, lineMap));
-  removeRanges(await symbolRanges(uri, lineMap));
+  removeRanges(await symbolRanges(uri));
   return Array.from(commentLines.values()).sort((a, b) => a - b);
 }
 
