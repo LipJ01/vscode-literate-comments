@@ -1,7 +1,7 @@
 {
-  "name": "markdown-comments",
-  "displayName": "Commenst as Markdown",
-  "description": "Treat source files as Markdown documents",
+  "name": "comments-as-markdown",
+  "displayName": "Comments as Markdown",
+  "description": "View source files as Markdown documents",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.73.0"
@@ -16,16 +16,31 @@
   "contributes": {
     "commands": [
       {
-        "title": "Preview as Markdown",
-        "command": "markdown-comments.preview",
+        "title": "Preview",
+        "command": "comments-as-markdown.preview",
         "category": "Comments as Markdown"
       },
       {
-        "title": "Preview as Markdown to the side",
-        "command": "markdown-comments.previewToSide",
+        "title": "Preview to the side",
+        "command": "comments-as-markdown.previewToSide",
         "category": "Comments as Markdown"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "Comments as Markdown",
+      "properties": {
+        "comments-as-markdown.parsing.header": {
+          "type": "string",
+          "default": "```Markdown",
+          "description": "Any text between the header and footer is treated as Markdown"
+        },
+        "comments-as-markdown.parsing.footer": {
+          "type": "string",
+          "default": "```",
+          "description": "Any text between the header and footer is treated as Markdown"
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",

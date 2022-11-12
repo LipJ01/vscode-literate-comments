@@ -1,4 +1,4 @@
-import { commands, Range, Tab, TextDocument, Uri, ViewColumn, window, workspace } from "vscode";
+import { commands, Disposable, Range, Tab, TextDocument, Uri, ViewColumn, window, workspace } from "vscode";
 import { DocumentMap } from "./DocumentMap";
 import { findMarkdown } from "./findMarkdown";
 import { newTempFilePath, writeFile } from "./tmpFiles";
@@ -53,7 +53,7 @@ async function expectNewTab(column: ViewColumn, filter: (tab: Tab) => boolean): 
   });
 }
 
-export async function showPreview(document: TextDocument, column: ViewColumn, toSide: boolean) {
+export async function showPreview(document: TextDocument, column: ViewColumn, toSide: boolean): Promise<Disposable> {
   const tmpPath = await newTempFilePath(document.fileName);
   await writeFile(tmpPath, await renderMarkdown(document));
 
@@ -61,23 +61,25 @@ export async function showPreview(document: TextDocument, column: ViewColumn, to
   await commands.executeCommand(command, Uri.file(tmpPath));
   const tab = await expectNewTab(toSide ? column + 1 : column, isMarkdownPreviewTab);
 
-  const changeDisposable = workspace.onDidChangeTextDocument(async e => {
-    if (e.document !== document) return;
-    await writeFile(tmpPath, await renderMarkdown(document));
-    await commands.executeCommand('markdown.refresh');
-  });
-  const closeDisposable = window.tabGroups.onDidChangeTabs(e => {
-    if (e.closed.find(t => t === tab)) {
-      closeDisposable.dispose();
-      changeDisposable.dispose();
-    }
-  });
+  let disposable: Disposable | undefined;
+  disposable = Disposable.from(
+    workspace.onDidChangeTextDocument(async e => {
+      if (e.document !== document) return;
+      await writeFile(tmpPath, await renderMarkdown(document));
+      await commands.executeCommand('markdown.refresh');
+    }),
+    workspace.onDidChangeConfiguration(async e => {
+      if (e.affectsConfiguration('comments-as-markdown.parsing')) {
+        await writeFile(tmpPath, await renderMarkdown(document));
+        await commands.executeCommand('markdown.refresh');
+      }
+    }),
+    window.tabGroups.onDidChangeTabs(e => {
+      if (e.closed.find(t => t === tab)) {
+        disposable?.dispose();
+      }
+    })
+  );
 
-  return {
-    dispose() {
-      closeDisposable.dispose();
-      changeDisposable.dispose();
-      window.tabGroups.close(tab);
-    }
-  }
+  return disposable;
 }

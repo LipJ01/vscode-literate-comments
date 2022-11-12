@@ -12,8 +12,8 @@ function previewCommand(context: ExtensionContext, toSide: boolean) {
 
 export function activate(context: ExtensionContext) {
 	context.subscriptions.push(
-		commands.registerCommand("markdown-comments.preview", previewCommand(context, false)),
-		commands.registerCommand("markdown-comments.previewToSide", previewCommand(context, true)),
+		commands.registerCommand("comments-as-markdown.preview", previewCommand(context, false)),
+		commands.registerCommand("comments-as-markdown.previewToSide", previewCommand(context, true)),
 	);
 }
 
