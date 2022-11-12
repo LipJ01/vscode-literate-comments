@@ -70,11 +70,11 @@ export class DocumentMap {
     return this.textInRange(range);
   }
 
-  positionOf(query: string, after?: Position): Position | undefined {
+  positionOf(query: (line: string, character: number) => number, after?: Position): Position | undefined {
     let anchor = after ?? this.bounds.start;
     if (!this.bounds.contains(anchor)) throw new Error("Invalid position");
     while (this.bounds.contains(anchor)) {
-      const index = this.text(anchor.line).indexOf(query, anchor.character);
+      const index = query(this.text(anchor.line), anchor.character);
       if (index !== -1) return new Position(anchor.line, index);
       anchor = new Position(anchor.line + 1, 0);
     }
