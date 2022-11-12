@@ -7,6 +7,7 @@
   "engines": {
     "vscode": "^1.73.0"
   },
+  "repository": "https://gitlab.com/uramer/vscode-comments-as-markdown",
   "categories": [
     "Visualization"
   ],
