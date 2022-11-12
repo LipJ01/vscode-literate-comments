@@ -52,10 +52,19 @@ async function writeFile(path: string, content: string) {
   await file.close();
 }
 
-async function expectNewTab(column: ViewColumn): Promise<Tab> {
+function isMarkdownPreviewTab(tab: Tab): boolean {
+  const type: string | undefined = (tab.input as any)?.viewType;
+  return type?.includes('markdown.preview') ?? false;
+}
+
+async function expectNewTab(column: ViewColumn, filter: (tab: Tab) => boolean): Promise<Tab> {
   return new Promise(resolve => {
     const disposable = window.tabGroups.onDidChangeTabs(e => {
-      const previewTab = e.opened.find(tab => tab.group.viewColumn === column);
+      e.opened.forEach(tab => console.log(tab.input));
+      const previewTab = e.opened.find(tab => 
+        tab.group.viewColumn === column &&
+        filter(tab)
+      );
       if (previewTab) {
         disposable.dispose();
         resolve(previewTab);
@@ -69,7 +78,7 @@ export async function showPreview(document: TextDocument, column: ViewColumn, to
   await writeFile(filePath, await renderMarkdown(document));
   const command = toSide ? 'markdown.showPreviewToSide' : 'markdown.showPreview';
   await commands.executeCommand(command, Uri.file(filePath));
-  const tab = await expectNewTab(toSide ? column + 1 : column);
+  const tab = await expectNewTab(toSide ? column + 1 : column, isMarkdownPreviewTab);
   const changeDisposable = workspace.onDidChangeTextDocument(async e => {
     if (e.document !== document) return;
     await writeFile(filePath, await renderMarkdown(document));
