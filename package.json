@@ -1,16 +1,20 @@
 {
   "name": "comments-as-markdown",
+  "publisher": "Anton Uramer",
   "displayName": "Comments as Markdown",
   "description": "View source files as Markdown documents",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "engines": {
     "vscode": "^1.73.0"
   },
   "categories": [
-    "Other"
+    "Visualization"
   ],
+  "license": "MIT",
+  "keywords": [ "markdown", "literate", "programming", "preview" ],
   "activationEvents": [
-    "*"
+    "onCommand:comments-as-markdown.preview",
+    "onCommand:comments-as-markdown.previewToSide"
   ],
   "main": "./out/extension.js",
   "contributes": {
