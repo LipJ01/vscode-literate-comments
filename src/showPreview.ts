@@ -1,81 +1,91 @@
-import { commands, TextDocument, ViewColumn, window } from "vscode";
-import { DocumentMap, LineType, TypeRange } from "./findComments";
+import { commands, Range, Tab, TextDocument, Uri, ViewColumn, window, workspace } from "vscode";
+import { DocumentMap, findMarkdown } from "./findMarkdown";
+import {tmpdir} from 'os';
+import {promises  as fs} from 'fs';
+import * as path from 'path';
 
-function wrapHtmlBody(body: string) {
-  return `<html>
-  <head></head>
-  <body>${body}</body>
-  </html>`;
+let tmpDirectory: string | undefined;
+async function getTempDirectory() {
+  tmpDirectory = tmpDirectory ?? await fs.mkdtemp(path.join(tmpdir(), "md-comment"));
+  return tmpDirectory!;
 }
 
-type DefinedTypeRange = TypeRange & {type: LineType.Code | LineType.Comment};
-function mergeEmpty(ranges: TypeRange[]): Array<DefinedTypeRange> {
-  const result = new Array<DefinedTypeRange>();
-  for (let i = 0; i < ranges.length; i++) {
-    const range = ranges[i];
-    if (range.type === LineType.Empty) {
-      const prev = result[result.length - 1];
-      const next = ranges.at(i + 1);
-      const edge = !prev || !next;
-      if (edge) {
-        const target = prev ?? next!;
-        target.start = Math.min(target.start, range.start);
-        target.end = Math.max(target.end, range.end);
-      }
-      else if(prev.type === next.type) {
-        prev.end = next.end;
-        i++;
-      }
-      else {
-        if (prev.type === LineType.Comment)
-          prev.end = range.end;
-        else
-          next.start = range.start;
-      }
-    }
-    else result.push(range as DefinedTypeRange);
-  }
-  return result;
+let fileIndex = 0;
+async function newTempFilePath(name: string) {
+  const directory = await getTempDirectory();
+  return path.join(directory, `${name}-${fileIndex++}.md`);
 }
 
-async function renderHtml(document: TextDocument) {
+async function renderMarkdown(document: TextDocument) {
   const documentMap = await DocumentMap.build(document);
   
   let content = '';
 
-  function appendLines(start: number, end: number) {
-    for (let i = start; i <= end; i++) {
-      content += documentMap.text(i);
+  function appendLines(range: Range) {
+    const text = documentMap.textInRange(range);
+    if (text.length > 0) {
+      content += text;
       content += "\n";
     }
   }
 
   const languageHeader = "```" + document.languageId + "\n";
-  function appendCode(start: number, end: number) {
-    if (start <= end) {
+  function appendCode(range: Range) {
+    const text = documentMap.textInRange(range);
+    if (text.length > 0) {
       content += languageHeader;
-      appendLines(start, end);
+      content += text;
+      content += "\n";
       content += "```\n";
     }
   }
 
-  const ranges = mergeEmpty(documentMap.typeRanges());
-  for (const range of ranges) {
-    if (range.type === LineType.Code) appendCode(range.start, range.end);
-    else appendLines(range.start, range.end);
-  }
-  const body: string = await commands.executeCommand('markdown.api.render', content);
-  return wrapHtmlBody(body);
+  const ranges = findMarkdown(documentMap);
+  for (const [isMarkdown, range] of ranges)
+    (isMarkdown ? appendLines : appendCode)(range);
+  return content;
 }
 
-export async function showPreview(document: TextDocument, column: ViewColumn) {
-  const html = await renderHtml(document);
-  const panel = window.createWebviewPanel('markdown.preview', 'Comments as Markdown', column);
-  panel.webview.html = html;
-  const changeDisposable = window.onDidChangeTextEditorSelection(async e => {
-    if (e.textEditor.document !== document) return;
-    if (!panel.visible) return;
-    panel.webview.html = await renderHtml(document);
+async function writeFile(path: string, content: string) {
+  const file = await fs.open(path, 'w');
+  await file.writeFile(content, 'utf8');
+  await file.close();
+}
+
+async function expectNewTab(column: ViewColumn): Promise<Tab> {
+  return new Promise(resolve => {
+    const disposable = window.tabGroups.onDidChangeTabs(e => {
+      const previewTab = e.opened.find(tab => tab.group.viewColumn === column);
+      if (previewTab) {
+        disposable.dispose();
+        resolve(previewTab);
+      }
+    });
   });
-  panel.onDidDispose(_ => changeDisposable.dispose());
+}
+
+export async function showPreview(document: TextDocument, column: ViewColumn, toSide: boolean) {
+  const filePath = await newTempFilePath(path.basename(document.fileName));
+  await writeFile(filePath, await renderMarkdown(document));
+  const command = toSide ? 'markdown.showPreviewToSide' : 'markdown.showPreview';
+  await commands.executeCommand(command, Uri.file(filePath));
+  const tab = await expectNewTab(toSide ? column + 1 : column);
+  const changeDisposable = workspace.onDidChangeTextDocument(async e => {
+    if (e.document !== document) return;
+    await writeFile(filePath, await renderMarkdown(document));
+    await commands.executeCommand('markdown.refresh');
+  });
+  const closeDisposable = window.tabGroups.onDidChangeTabs(e => {
+    if (e.closed.find(t => t === tab)) {
+      closeDisposable.dispose();
+      changeDisposable.dispose();
+    }
+  });
+  return {
+    dispose() {
+      closeDisposable.dispose();
+      changeDisposable.dispose();
+      window.tabGroups.close(tab);
+    }
+  }
 }
