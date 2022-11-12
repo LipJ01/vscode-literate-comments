@@ -2,11 +2,11 @@ import { commands, ExtensionContext, window } from 'vscode';
 import { showPreview } from './showPreview';
 
 function previewCommand(context: ExtensionContext, toSide: boolean) {
-	return function() {
+	return async function() {
 		const editor = window.activeTextEditor;
-		if (editor && editor.viewColumn)
-			showPreview(editor.document, editor.viewColumn, toSide)
-				.then(it => context.subscriptions.push(it));
+		if (!editor || !editor.viewColumn) return;
+		const disposable = await showPreview(editor.document, editor.viewColumn, toSide);
+		context.subscriptions.push(disposable);
 	}
 }
 

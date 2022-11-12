@@ -1,20 +1,7 @@
 import { commands, Range, Tab, TextDocument, Uri, ViewColumn, window, workspace } from "vscode";
-import { DocumentMap, findMarkdown } from "./findMarkdown";
-import {tmpdir} from 'os';
-import {promises  as fs} from 'fs';
-import * as path from 'path';
-
-let tmpDirectory: string | undefined;
-async function getTempDirectory() {
-  tmpDirectory = tmpDirectory ?? await fs.mkdtemp(path.join(tmpdir(), "md-comment"));
-  return tmpDirectory!;
-}
-
-let fileIndex = 0;
-async function newTempFilePath(name: string) {
-  const directory = await getTempDirectory();
-  return path.join(directory, `${name}-${fileIndex++}.md`);
-}
+import { DocumentMap } from "./DocumentMap";
+import { findMarkdown } from "./findMarkdown";
+import { newTempFilePath, writeFile } from "./tmpFiles";
 
 async function renderMarkdown(document: TextDocument) {
   const documentMap = await DocumentMap.build(document);
@@ -46,12 +33,6 @@ async function renderMarkdown(document: TextDocument) {
   return content;
 }
 
-async function writeFile(path: string, content: string) {
-  const file = await fs.open(path, 'w');
-  await file.writeFile(content, 'utf8');
-  await file.close();
-}
-
 function isMarkdownPreviewTab(tab: Tab): boolean {
   const type: string | undefined = (tab.input as any)?.viewType;
   return type?.includes('markdown.preview') ?? false;
@@ -60,7 +41,6 @@ function isMarkdownPreviewTab(tab: Tab): boolean {
 async function expectNewTab(column: ViewColumn, filter: (tab: Tab) => boolean): Promise<Tab> {
   return new Promise(resolve => {
     const disposable = window.tabGroups.onDidChangeTabs(e => {
-      e.opened.forEach(tab => console.log(tab.input));
       const previewTab = e.opened.find(tab => 
         tab.group.viewColumn === column &&
         filter(tab)
@@ -74,14 +54,16 @@ async function expectNewTab(column: ViewColumn, filter: (tab: Tab) => boolean): 
 }
 
 export async function showPreview(document: TextDocument, column: ViewColumn, toSide: boolean) {
-  const filePath = await newTempFilePath(path.basename(document.fileName));
-  await writeFile(filePath, await renderMarkdown(document));
+  const tmpPath = await newTempFilePath(document.fileName);
+  await writeFile(tmpPath, await renderMarkdown(document));
+
   const command = toSide ? 'markdown.showPreviewToSide' : 'markdown.showPreview';
-  await commands.executeCommand(command, Uri.file(filePath));
+  await commands.executeCommand(command, Uri.file(tmpPath));
   const tab = await expectNewTab(toSide ? column + 1 : column, isMarkdownPreviewTab);
+
   const changeDisposable = workspace.onDidChangeTextDocument(async e => {
     if (e.document !== document) return;
-    await writeFile(filePath, await renderMarkdown(document));
+    await writeFile(tmpPath, await renderMarkdown(document));
     await commands.executeCommand('markdown.refresh');
   });
   const closeDisposable = window.tabGroups.onDidChangeTabs(e => {
@@ -90,6 +72,7 @@ export async function showPreview(document: TextDocument, column: ViewColumn, to
       changeDisposable.dispose();
     }
   });
+
   return {
     dispose() {
       closeDisposable.dispose();
