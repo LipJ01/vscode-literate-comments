@@ -4,7 +4,7 @@ import { findMarkdown } from "./findMarkdown";
 import { newTempFilePath, writeFile } from "./tmpFiles";
 
 async function renderMarkdown(document: TextDocument) {
-  const documentMap = await DocumentMap.build(document);
+  const documentMap = new DocumentMap(document);
   
   let content = '';
 

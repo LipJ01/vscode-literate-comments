@@ -4,16 +4,11 @@ export class DocumentMap {
   private document: TextDocument;
   readonly bounds: Range;
 
-  private constructor(document: TextDocument, range: Range) {
-    this.document = document;
-    this.bounds = range;
-  }
-
-  static async build(document: TextDocument, range?: Range) {
+  constructor(document: TextDocument, range?: Range) {
     if (range !== undefined && !document.validateRange(range)) throw new Error("Invalid range");
     const lastLine = document.lineCount - 1;
-    const bounds = range ?? new Range(0, 0, lastLine, document.lineAt(lastLine).text.length);
-    return new DocumentMap(document, bounds);
+    this.bounds = range ?? new Range(0, 0, lastLine, document.lineAt(lastLine).text.length);
+    this.document = document;
   }
 
   count(): number {
