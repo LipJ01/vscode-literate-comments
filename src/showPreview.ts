@@ -53,7 +53,52 @@ async function expectNewTab(column: ViewColumn, filter: (tab: Tab) => boolean): 
   });
 }
 
-export async function showPreview(document: TextDocument, column: ViewColumn, toSide: boolean): Promise<Disposable> {
+
+export async function showLens(
+  document: TextDocument,
+  column: ViewColumn,
+  range: Range,
+) {
+  const documentMap = new DocumentMap(document, range);
+  const content = documentMap.textInRange(range);
+  const tmpPath = await newTempFilePath(document.fileName);
+  await writeFile(tmpPath, content);
+
+  const command = 'markdown.showPreviewToSide';
+  await commands.executeCommand(command, Uri.file(tmpPath));
+  const tab = await expectNewTab(column + 1, isMarkdownPreviewTab);
+
+  let disposable: Disposable | undefined;
+  disposable = Disposable.from(
+    workspace.onDidChangeTextDocument(async e => {
+      if (e.document !== document) return;
+      const change = e.contentChanges.find(change => change.range.intersection(range) !== undefined);
+      if (change) {
+        window.tabGroups.close(tab);
+        disposable?.dispose();
+      }
+    }),
+    workspace.onDidChangeConfiguration(async e => {
+      if (e.affectsConfiguration('comments-as-markdown.parsing')) {
+        window.tabGroups.close(tab);
+        disposable?.dispose();
+      }
+    }),
+    window.tabGroups.onDidChangeTabs(e => {
+      if (e.closed.find(t => t === tab)) {
+        disposable?.dispose();
+      }
+    })
+  );
+
+  return disposable;
+}
+
+export async function showPreview(
+  document: TextDocument,
+  column: ViewColumn,
+  toSide: boolean
+): Promise<Disposable> {
   const tmpPath = await newTempFilePath(document.fileName);
   await writeFile(tmpPath, await renderMarkdown(document));
 

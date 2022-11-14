@@ -15,7 +15,9 @@
   "keywords": [ "markdown", "literate", "programming", "preview" ],
   "activationEvents": [
     "onCommand:comments-as-markdown.preview",
-    "onCommand:comments-as-markdown.previewToSide"
+    "onCommand:comments-as-markdown.previewToSide",
+    "onCommand:comments-as-markdown.codeLensPreview",
+    "onStartupFinished"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -43,6 +45,11 @@
           "type": "string",
           "default": "```",
           "description": "Any text between the header and footer is treated as Markdown"
+        },
+        "comments-as-markdown.codeLens.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable CodeLens for detected Markdown blocks"
         }
       }
     }

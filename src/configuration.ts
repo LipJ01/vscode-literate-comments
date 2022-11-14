@@ -8,10 +8,14 @@ export class Configuration {
   }
 
   get markdownHeader(): string {
-    return (this.raw.get('parsing.header') as string).toLowerCase();
+    return this.raw.get<string>('parsing.header')?.toLowerCase() ?? '```markdown';
   }
 
   get markdownFooter(): string {
-    return (this.raw.get('parsing.footer') as string).toLowerCase();
+    return this.raw.get<string>('parsing.footer')?.toLowerCase() ?? '```';
+  }
+
+  get codeLensEnabled(): boolean {
+    return this.raw.get<boolean>('codeLens.enabled')!;
   }
 }
