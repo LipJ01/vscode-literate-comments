@@ -1,7 +1,7 @@
-import { Range, Position } from 'vscode';
+import { Range, Position, TextDocument } from 'vscode';
 import { Configuration } from './configuration';
 
-import type { DocumentMap } from './DocumentMap';
+import { DocumentMap } from './DocumentMap';
 
 const CODE_BLOCK = '```';
 export function findMarkdown(map: DocumentMap): Array<[boolean, Range]> {
@@ -10,7 +10,7 @@ export function findMarkdown(map: DocumentMap): Array<[boolean, Range]> {
   const stack = new Array<Position>();
   let anchor = map.bounds.start;
   const footerCollision = CODE_BLOCK === markdownFooter;
-  while(true) {
+  while (anchor.isBefore(map.bounds.end)) {
     if (stack.length === 0) {
       const found = map.positionOf((line, ch) => line.toLowerCase().indexOf(markdownHeader, ch), anchor);
       if (!found) break;
@@ -23,7 +23,7 @@ export function findMarkdown(map: DocumentMap): Array<[boolean, Range]> {
       const found = map.positionOf((line, ch) => line.toLowerCase().indexOf(markdownFooter, ch), anchor);
       if (!found) break;
       anchor = map.move(found, markdownFooter.length);
-      const lineEnd = new Position(anchor.line, map.length(anchor.line));
+      const lineEnd = map.endOfLine(anchor.line);
       if (footerCollision) {
         const language = map.textInRange(new Range(anchor, lineEnd));
         if (language === '') {
@@ -44,4 +44,35 @@ export function findMarkdown(map: DocumentMap): Array<[boolean, Range]> {
   const remainder = stack.pop() ?? anchor;
   if (remainder.isBefore(map.bounds.end)) result.push([false, new Range(remainder, map.bounds.end)]);
   return result;
+}
+
+export async function renderMarkdown(document: TextDocument, range?: Range) {
+  const documentMap = new DocumentMap(document, range);
+  
+  let content = '';
+
+  function appendLines(range: Range) {
+    const text = documentMap.textInRange(range);
+    if (text.length > 0) {
+      content += text;
+      content += "\n";
+    }
+  }
+
+  const languageHeader = "```" + document.languageId + "\n";
+  function appendCode(range: Range) {
+    const text = documentMap.textInRange(range);
+    if (text.length > 0) {
+      content += languageHeader;
+      content += text;
+      content += "\n";
+      content += "```\n";
+    }
+  }
+
+  const ranges = findMarkdown(documentMap);
+  for (const [isMarkdown, r] of ranges) {
+    (isMarkdown ? appendLines : appendCode)(r);
+  }
+  return content;
 }

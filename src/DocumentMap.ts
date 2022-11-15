@@ -75,4 +75,9 @@ export class DocumentMap {
     }
     return undefined;
   }
+
+  endOfLine(line: number): Position {
+    if (line === this.bounds.end.line) return this.bounds.end;
+    else return new Position(line, this.length(line));
+  }
 }
