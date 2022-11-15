@@ -1,4 +1,3 @@
-import { TextEncoder } from "util";
 import { Disposable, Event, EventEmitter, FileChangeEvent, FileChangeType, FileStat, FileSystemError, FileSystemProvider, FileType, Position, Range, Uri, workspace } from "vscode";
 import { renderMarkdown } from "./parse";
 

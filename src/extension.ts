@@ -25,7 +25,6 @@ export function activate(context: ExtensionContext) {
 
 	context.subscriptions.push(
 		languages.registerCodeLensProvider("*", new MarkdownLensProvider()),
-		// workspace.registerTextDocumentContentProvider(MarkdownContentProvider.SCHEME, new MarkdownContentProvider()),
 		workspace.registerFileSystemProvider(MarkdownFileProvider.SCHEME, fileProvider),
 		commands.registerCommand("comments-as-markdown.preview", previewCommand(context, false)),
 		commands.registerCommand("comments-as-markdown.previewToSide", previewCommand(context, true)),

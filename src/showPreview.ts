@@ -6,17 +6,29 @@ function isMarkdownPreviewTab(tab: Tab): boolean {
 }
 
 async function expectNewTab(column: ViewColumn, filter: (tab: Tab) => boolean): Promise<Tab> {
-  return new Promise(resolve => {
-    const disposable = window.tabGroups.onDidChangeTabs(e => {
-      const previewTab = e.opened.find(tab => 
-        tab.group.viewColumn === column &&
-        filter(tab)
-      );
-      if (previewTab) {
-        disposable.dispose();
-        resolve(previewTab);
-      }
-    });
+  return new Promise((resolve, reject) => {
+    let timeout: NodeJS.Timeout;
+    const disposable = Disposable.from(
+      window.tabGroups.onDidChangeTabs(e => {
+        const previewTab = e.opened.find(tab => 
+          tab.group.viewColumn === column &&
+          filter(tab)
+        );
+        if (previewTab) {
+          disposable.dispose();
+          resolve(previewTab);
+        }
+      }),
+      {
+        dispose() {
+          clearTimeout(timeout);
+        }
+      },
+    );
+    timeout = setTimeout(() => {
+      disposable.dispose();
+      reject();
+    }, 10000);
   });
 }
 
@@ -34,7 +46,14 @@ export async function showLens(
 ) {
   const uri = provider.create(document.uri, range);
   await commands.executeCommand('markdown.showPreviewToSide', uri);
-  const tab = await expectNewTab(column + 1, isMarkdownPreviewTab);
+  let tab: Tab;
+  try {
+    tab = await expectNewTab(column + 1, isMarkdownPreviewTab);
+  }
+  catch (e) {
+    provider.delete(uri);
+    return { dispose() {} };
+  }
 
   let disposable: Disposable | undefined;
   disposable = Disposable.from(
@@ -75,10 +94,16 @@ export async function showPreview(
   toSide: boolean
 ): Promise<Disposable> {
   const uri = provider.create(document.uri);
-
   const command = toSide ? 'markdown.showPreviewToSide' : 'markdown.showPreview';
   await commands.executeCommand(command, uri);
-  const tab = await expectNewTab(toSide ? column + 1 : column, isMarkdownPreviewTab);
+  let tab: Tab;
+  try {
+    tab = await expectNewTab(toSide ? column + 1 : column, isMarkdownPreviewTab);
+  }
+  catch (e) {
+    provider.delete(uri);
+    return { dispose() {} };
+  }
 
   let disposable: Disposable | undefined;
   disposable = Disposable.from(
