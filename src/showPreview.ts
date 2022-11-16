@@ -93,11 +93,6 @@ export async function showPreview(
 
   let disposable: Disposable | undefined;
   disposable = Disposable.from(
-    // provider.watch(uri, { recursive: false, excludes: [] }),
-    provider.onDidChangeFile(async e => {
-      if (e.find(v => chunk.equalToUri(v.uri)))
-        await commands.executeCommand('markdown.preview.refresh');
-    }),
     window.tabGroups.onDidChangeTabs(e => {
       if (e.closed.find(t => t === tab)) {
         disposable?.dispose();
