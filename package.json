@@ -3,7 +3,7 @@
   "publisher": "anton-uramer",
   "displayName": "Comments as Markdown",
   "description": "View source files as Markdown documents",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "engines": {
     "vscode": "^1.73.0"
   },
