@@ -43,14 +43,14 @@ export class Chunk {
   }
 
   asUri(): Uri {
-    const path = this.documentUri.toString();
+    const query = encodeURIComponent(this.documentUri.toString());
     const fragment = encodeURIComponent(rangeToString(this.range));
-    return Uri.parse(`${SCHEME}://${path}#${fragment}`);
+    return Uri.parse(`${SCHEME}:///?${query}#${fragment}`);
   }
 
   static fromUri(uri: Uri): Chunk {
     if (uri.scheme !== SCHEME) throw new Error("Invalid URI: " + uri);
-    const documentUri = Uri.parse(decodeURIComponent(uri.path));
+    const documentUri = Uri.parse(decodeURIComponent(uri.query));
     const range = parseRange(decodeURIComponent(uri.fragment));
     return new Chunk(documentUri, range);
   }
