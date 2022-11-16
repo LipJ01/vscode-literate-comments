@@ -1,7 +1,7 @@
 import { commands, ExtensionContext, languages, Range, TextDocument, ViewColumn, window, workspace } from 'vscode';
 import { MarkdownLensProvider } from './MarkdownLensProvider';
 import { showPreview, showLens } from './showPreview';
-import { MarkdownFileProvider } from './MarkdownFileProvider';
+import { MarkdownFileProvider, SCHEME } from './MarkdownFileProvider';
 
 export function activate(context: ExtensionContext) {
 	const fileProvider = new MarkdownFileProvider();
@@ -24,8 +24,9 @@ export function activate(context: ExtensionContext) {
 	}
 
 	context.subscriptions.push(
+		fileProvider,
 		languages.registerCodeLensProvider("*", new MarkdownLensProvider()),
-		workspace.registerFileSystemProvider(MarkdownFileProvider.SCHEME, fileProvider),
+		workspace.registerFileSystemProvider(SCHEME, fileProvider),
 		commands.registerCommand("comments-as-markdown.preview", previewCommand(context, false)),
 		commands.registerCommand("comments-as-markdown.previewToSide", previewCommand(context, true)),
 		commands.registerCommand("comments-as-markdown.codeLensPreview", codeLensPreviewCommand(context)),

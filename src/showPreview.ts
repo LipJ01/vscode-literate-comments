@@ -1,4 +1,5 @@
 import { commands, Disposable, Range, Tab, TextDocument, Uri, ViewColumn, window, workspace } from "vscode";
+import { Chunk, MarkdownFileProvider } from "./MarkdownFileProvider";
 
 function isMarkdownPreviewTab(tab: Tab): boolean {
   const type: string | undefined = (tab.input as any)?.viewType;
@@ -10,7 +11,7 @@ async function expectNewTab(column: ViewColumn, filter: (tab: Tab) => boolean): 
     let timeout: NodeJS.Timeout;
     const disposable = Disposable.from(
       window.tabGroups.onDidChangeTabs(e => {
-        const previewTab = e.opened.find(tab => 
+        const previewTab = e.opened.find(tab =>
           tab.group.viewColumn === column &&
           filter(tab)
         );
@@ -32,44 +33,28 @@ async function expectNewTab(column: ViewColumn, filter: (tab: Tab) => boolean): 
   });
 }
 
-interface Provider {
-  create(uri: Uri, range?: Range): Uri;
-  update(uri: Uri): void;
-  delete(uri: Uri): void;
-}
-
 export async function showLens(
-  provider: Provider,
+  provider: MarkdownFileProvider,
   document: TextDocument,
   column: ViewColumn,
   range: Range,
 ) {
-  const uri = provider.create(document.uri, range);
-  await commands.executeCommand('markdown.showPreviewToSide', uri);
+  const chunk = new Chunk(document.uri, range);
+  const uri = chunk.asUri();
+  commands.executeCommand('markdown.showPreviewToSide', uri);
   let tab: Tab;
   try {
     tab = await expectNewTab(column + 1, isMarkdownPreviewTab);
   }
   catch (e) {
-    provider.delete(uri);
-    return { dispose() {} };
+    return { dispose() { } };
   }
 
   let disposable: Disposable | undefined;
   disposable = Disposable.from(
-    workspace.onDidChangeTextDocument(async e => {
-      if (e.document !== document) return;
-      const change = e.contentChanges.find(change => change.range.intersection(range) !== undefined);
-      if (change) {
-        window.tabGroups.close(tab);
-        disposable?.dispose();
-      }
-    }),
-    workspace.onDidChangeConfiguration(async e => {
-      if (e.affectsConfiguration('comments-as-markdown.parsing')) {
-        window.tabGroups.close(tab);
-        disposable?.dispose();
-      }
+    provider.onDidChangeFile(e => {
+      if (e.find(v => chunk.equalToUri(v.uri)))
+        disposable?.dispose()
     }),
     window.tabGroups.onDidChangeTabs(e => {
       if (e.closed.find(t => t === tab)) {
@@ -78,8 +63,9 @@ export async function showLens(
     }),
     {
       dispose() {
-        window.tabGroups.close(tab);
-        provider.delete(uri);
+        try {
+          window.tabGroups.close(tab);
+        } catch (e) { }
       }
     }
   );
@@ -88,33 +74,29 @@ export async function showLens(
 }
 
 export async function showPreview(
-  provider: Provider,
+  provider: MarkdownFileProvider,
   document: TextDocument,
   column: number,
   toSide: boolean
 ): Promise<Disposable> {
-  const uri = provider.create(document.uri);
+  const chunk = new Chunk(document.uri);
+  const uri = chunk.asUri();
   const command = toSide ? 'markdown.showPreviewToSide' : 'markdown.showPreview';
-  await commands.executeCommand(command, uri);
+  commands.executeCommand(command, uri);
   let tab: Tab;
   try {
     tab = await expectNewTab(toSide ? column + 1 : column, isMarkdownPreviewTab);
   }
   catch (e) {
-    provider.delete(uri);
-    return { dispose() {} };
+    return { dispose() { } };
   }
 
   let disposable: Disposable | undefined;
   disposable = Disposable.from(
-    workspace.onDidChangeTextDocument(async e => {
-      if (e.document !== document) return;
-      provider.update(uri);
-    }),
-    workspace.onDidChangeConfiguration(async e => {
-      if (e.affectsConfiguration('comments-as-markdown.parsing')) {
-        await commands.executeCommand('markdown.refresh');
-      }
+    // provider.watch(uri, { recursive: false, excludes: [] }),
+    provider.onDidChangeFile(async e => {
+      if (e.find(v => chunk.equalToUri(v.uri)))
+        await commands.executeCommand('markdown.preview.refresh');
     }),
     window.tabGroups.onDidChangeTabs(e => {
       if (e.closed.find(t => t === tab)) {
@@ -123,8 +105,9 @@ export async function showPreview(
     }),
     {
       dispose() {
-        window.tabGroups.close(tab);
-        provider.delete(uri);
+        try {
+          window.tabGroups.close(tab);
+        } catch (e) {}
       }
     },
   );

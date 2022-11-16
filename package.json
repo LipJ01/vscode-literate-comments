@@ -19,6 +19,7 @@
     "onCommand:comments-as-markdown.codeLensPreview",
     "onStartupFinished"
   ],
+  "main": "./dist/web/extension.js",
   "browser": "./dist/web/extension.js",
   "contributes": {
     "commands": [
