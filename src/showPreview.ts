@@ -62,12 +62,12 @@ export async function showLens(
       }
     }),
     {
-      dispose() {
+      async dispose() {
         try {
-          window.tabGroups.close(tab);
-        } catch (e) { }
+          await window.tabGroups.close(tab);
+        } catch (e) {}
       }
-    }
+    },
   );
 
   return disposable;
@@ -99,9 +99,9 @@ export async function showPreview(
       }
     }),
     {
-      dispose() {
+      async dispose() {
         try {
-          window.tabGroups.close(tab);
+          await window.tabGroups.close(tab);
         } catch (e) {}
       }
     },
