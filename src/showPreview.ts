@@ -74,7 +74,6 @@ export async function showLens(
 }
 
 export async function showPreview(
-  provider: MarkdownFileProvider,
   document: TextDocument,
   column: number,
   toSide: boolean
