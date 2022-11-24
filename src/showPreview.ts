@@ -40,6 +40,7 @@ export async function showLens(
   range: Range,
 ) {
   const chunk = new Chunk(document.uri, range);
+  provider.open(chunk);
   const uri = chunk.asUri();
   commands.executeCommand('markdown.showPreviewToSide', uri);
   let tab: Tab;
@@ -64,6 +65,7 @@ export async function showLens(
     {
       async dispose() {
         try {
+          provider.close(chunk);
           await window.tabGroups.close(tab);
         } catch (e) {}
       }
@@ -74,11 +76,13 @@ export async function showLens(
 }
 
 export async function showPreview(
+  provider: MarkdownFileProvider,
   document: TextDocument,
   column: number,
   toSide: boolean
 ): Promise<Disposable> {
   const chunk = new Chunk(document.uri);
+  provider.open(chunk);
   const uri = chunk.asUri();
   const command = toSide ? 'markdown.showPreviewToSide' : 'markdown.showPreview';
   commands.executeCommand(command, uri);
@@ -100,6 +104,7 @@ export async function showPreview(
     {
       async dispose() {
         try {
+          provider.close(chunk);
           await window.tabGroups.close(tab);
         } catch (e) {}
       }

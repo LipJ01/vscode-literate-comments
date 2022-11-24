@@ -1,5 +1,6 @@
 import { Disposable, Event, EventEmitter, FileChangeEvent, FileChangeType, FileStat, FileSystemError, FileSystemProvider, FileType, Position, Range, Uri, workspace } from "vscode";
 import { renderMarkdown } from "./parse";
+import { decodeURISegment, encodeURISegment } from "./uriUtils";
 
 export const SCHEME = "comments-as-markdown";
 
@@ -43,15 +44,19 @@ export class Chunk {
   }
 
   asUri(): Uri {
-    const query = encodeURIComponent(this.documentUri.toString());
-    const fragment = encodeURIComponent(rangeToString(this.range));
-    return Uri.parse(`${SCHEME}:///?${query}#${fragment}`);
+    const query = encodeURISegment(this.documentUri.toString());
+    const fragment = encodeURISegment(rangeToString(this.range));
+    return Uri.from({
+      scheme: SCHEME,
+      path: '/' + query,
+      fragment: fragment,
+    });
   }
 
   static fromUri(uri: Uri): Chunk {
     if (uri.scheme !== SCHEME) throw new Error("Invalid URI: " + uri);
-    const documentUri = Uri.parse(decodeURIComponent(uri.query));
-    const range = parseRange(decodeURIComponent(uri.fragment));
+    const documentUri = Uri.parse(decodeURISegment(uri.path.substring(1)));
+    const range = parseRange(decodeURISegment(uri.fragment));
     return new Chunk(documentUri, range);
   }
 
@@ -165,12 +170,14 @@ class ChunkCache {
 }
 
 export class MarkdownFileProvider implements FileSystemProvider, Disposable {
+  private active: Set<DocumentKey>;
   private watchedMap: WatchedMap;
   private cache: ChunkCache;
   private emitter: EventEmitter<FileChangeEvent[]>;
   private disposable: Disposable;
 
   constructor() {
+    this.active = new Set();
     this.watchedMap = new WatchedMap();
     this.cache = new ChunkCache();
     this.emitter = new EventEmitter();
@@ -206,14 +213,40 @@ export class MarkdownFileProvider implements FileSystemProvider, Disposable {
     this.disposable.dispose();
   }
 
+  open(chunk: Chunk) {
+    this.active.add(chunk.documentKey());
+  }
+
+  close(chunk: Chunk) {
+    this.active.delete(chunk.documentKey());
+  }
+
   async readFile(uri: Uri): Promise<Uint8Array> {
     const chunk = Chunk.fromUri(uri);
-    const text = await this.cache.text(chunk);
-    return new TextEncoder().encode(text);
+    if (this.active.has(chunk.documentKey()))
+      return new TextEncoder().encode(await this.cache.text(chunk));
+    else {
+      try {
+        return await workspace.fs.readFile(chunk.documentUri);
+      } catch (e) {
+        console.error(e);
+        throw e;
+      }
+    }
   }
 
   async stat(uri: Uri): Promise<FileStat> {
-    return await this.cache.stat(Chunk.fromUri(uri));
+    const chunk = Chunk.fromUri(uri);
+    if (this.active.has(chunk.documentKey()))
+      return await this.cache.stat(Chunk.fromUri(uri));
+    else {
+      try {
+        return await workspace.fs.stat(chunk.documentUri);
+      } catch (e) {
+        console.error(e);
+        throw e;
+      }
+    }
   }
 
   watch(uri: Uri, options: { readonly recursive: boolean; readonly excludes: readonly string[]; }): Disposable {

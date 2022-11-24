@@ -10,7 +10,7 @@ export function activate(context: ExtensionContext) {
 		return async function() {
 			const editor = window.activeTextEditor;
 			if (!editor || !editor.viewColumn) return;
-			const disposable = await showPreview(editor.document, editor.viewColumn, toSide);
+			const disposable = await showPreview(fileProvider, editor.document, editor.viewColumn, toSide);
 			context.subscriptions.push(disposable);
 		}
 	}

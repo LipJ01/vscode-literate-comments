@@ -1,7 +1,8 @@
-import { Range, Position, TextDocument } from 'vscode';
+import { Range, Position, TextDocument, workspace, Uri } from 'vscode';
 import { Configuration } from './configuration';
 
 import { DocumentMap } from './DocumentMap';
+import { encodeURISegment, hasScheme, isAbsolute, parentUri } from './uriUtils';
 
 const CODE_BLOCK = '```';
 export function findMarkdown(map: DocumentMap): Array<[boolean, Range]> {
@@ -48,13 +49,24 @@ export function findMarkdown(map: DocumentMap): Array<[boolean, Range]> {
 
 export async function renderMarkdown(document: TextDocument, range?: Range) {
   const documentMap = new DocumentMap(document, range);
+  const uriPrefix = encodeURISegment(parentUri(document.uri).toString(true  ));
   
   let content = '';
 
   function appendLines(range: Range) {
     const text = documentMap.textInRange(range);
     if (text.length > 0) {
-      content += text;
+      const correctedText = text.replace(/!\[([.^\[\]]*?)\]\((.*)\)/g, (match: string, name: string, path: string) => {
+        if (hasScheme(path))
+          return match;
+        else if (isAbsolute(path)) {
+          const encodedPath = encodeURISegment(Uri.file(path).toString(true));
+          return `![${name}](${encodedPath})`;
+        }
+        else
+          return `![${name}](${uriPrefix}${encodeURISegment('/' + path)})`;
+      });
+      content += correctedText;
       content += "\n";
     }
   }
