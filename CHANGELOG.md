@@ -1,5 +1,9 @@
 # Change Log
 
+## [0.3.2]
+
+- Fix local images
+
 ## [0.3.1]
 
 - Fix preview for files with virtual paths

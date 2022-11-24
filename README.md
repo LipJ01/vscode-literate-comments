@@ -19,6 +19,14 @@ You can configure the syntax of the Markdown block with the following settings:
 
 ## Release Notes
 
+### 0.3
+
+Support running in Web VSCode
+
+### 0.2
+
+CodeLens support
+
 ### 0.1
 
 Initial release
