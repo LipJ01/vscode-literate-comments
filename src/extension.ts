@@ -2,9 +2,11 @@ import { commands, ExtensionContext, languages, Range, TextDocument, ViewColumn,
 import { MarkdownLensProvider } from './MarkdownLensProvider';
 import { showPreview, showLens } from './showPreview';
 import { MarkdownFileProvider, SCHEME } from './MarkdownFileProvider';
+import { SyntaxMap } from './SyntaxMap';
 
 export function activate(context: ExtensionContext) {
-	const fileProvider = new MarkdownFileProvider();
+	const languageComments = new SyntaxMap();
+	const fileProvider = new MarkdownFileProvider(languageComments);
 
 	function previewCommand(context: ExtensionContext, toSide: boolean) {
 		return async function() {
@@ -25,7 +27,8 @@ export function activate(context: ExtensionContext) {
 
 	context.subscriptions.push(
 		fileProvider,
-		languages.registerCodeLensProvider("*", new MarkdownLensProvider()),
+		languageComments,
+		languages.registerCodeLensProvider("*", new MarkdownLensProvider(languageComments)),
 		workspace.registerFileSystemProvider(SCHEME, fileProvider),
 		commands.registerCommand("comments-as-markdown.preview", previewCommand(context, false)),
 		commands.registerCommand("comments-as-markdown.previewToSide", previewCommand(context, true)),

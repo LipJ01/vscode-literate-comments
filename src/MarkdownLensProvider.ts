@@ -1,24 +1,20 @@
 import { CodeLens, CodeLensProvider, Range, TextDocument } from 'vscode';
+import { SyntaxMap } from './SyntaxMap';
 import { Configuration } from './configuration';
 import { DocumentMap } from './DocumentMap';
-import { findMarkdown } from './parse';
 
 export class MarkdownLensProvider implements CodeLensProvider {
+  constructor(private syntaxMap: SyntaxMap) {}
 
   async provideCodeLenses(document: TextDocument): Promise<CodeLens[]> {
     const config = new Configuration();
     if (!config.codeLensEnabled) return [];
 
-    const headerLength = config.markdownHeader.length + 1;
-    const footerLength = config.markdownFooter.length + 1;
+    const commentSyntax = await this.syntaxMap.commentSyntax(document.languageId);
 
-    const documentMap = new DocumentMap(document);
-    const ranges = findMarkdown(documentMap)
-      .filter(([isMarkdown, _]) => isMarkdown)
-      .map(([_, range]) => new Range(
-        documentMap.move(range.start, -headerLength),
-        documentMap.move(range.end, footerLength)
-      ));
+    const documentMap = new DocumentMap(commentSyntax, document);
+    const ranges: Range[] = [];
+    documentMap.forEachComment(comment => ranges.push(new Range(comment.start, comment.end)));
 
     return ranges.map(range => new CodeLens(range, {
       title: "MarkdownLens",

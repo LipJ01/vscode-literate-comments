@@ -1,4 +1,6 @@
 import { Disposable, Event, EventEmitter, FileChangeEvent, FileChangeType, FileStat, FileSystemError, FileSystemProvider, FileType, Position, Range, Uri, workspace } from "vscode";
+import { SyntaxMap } from "./SyntaxMap";
+import { DocumentMap } from "./DocumentMap";
 import { renderMarkdown } from "./parse";
 import { decodeURISegment, encodeURISegment } from "./uriUtils";
 
@@ -136,13 +138,15 @@ interface CachedValue {
 class ChunkCache {
   private map: Map<ChunkKey, CachedValue>;
 
-  constructor() {
+  constructor(private commentMap: SyntaxMap) {
     this.map = new Map();
   }
 
   private async generate(chunk: Chunk): Promise<CachedValue> {
     const document = await workspace.openTextDocument(chunk.documentUri);
-    const text = await renderMarkdown(document, chunk.range);
+    const commentSyntax = await this.commentMap.commentSyntax(document.languageId);
+    const documentMap = new DocumentMap(commentSyntax, document, chunk.range);
+    const text = await renderMarkdown(documentMap);
     const stat = await workspace.fs.stat(chunk.documentUri);
     stat.mtime = new Date().getTime();
     stat.size = text.length;
@@ -177,10 +181,11 @@ export class MarkdownFileProvider implements FileSystemProvider, Disposable {
   private emitter: EventEmitter<FileChangeEvent[]>;
   private disposable: Disposable;
 
-  constructor() {
+  constructor(commentMap: SyntaxMap) {
+
     this.active = new Set();
     this.watchedMap = new WatchedMap();
-    this.cache = new ChunkCache();
+    this.cache = new ChunkCache(commentMap);
     this.emitter = new EventEmitter();
     this.onDidChangeFile = this.emitter.event;
     this.disposable = Disposable.from(
@@ -193,21 +198,10 @@ export class MarkdownFileProvider implements FileSystemProvider, Disposable {
           }]);
         });
       }),
-      workspace.onDidChangeConfiguration(async e => {
-        if (!e.affectsConfiguration('comments-as-markdown.parsing')) return;
-        const changes: FileChangeEvent[] = [];
-        this.watchedMap.allWatches().forEach(uri => {
-          this.cache.refresh(Chunk.fromUri(uri));
-          changes.push({
-            type: FileChangeType.Changed,
-            uri: uri,
-          });
-        });
-        this.emitter.fire(changes);
-      }),
       this.emitter,
     );
   }
+
   onDidChangeFile: Event<FileChangeEvent[]>;
 
   dispose() {

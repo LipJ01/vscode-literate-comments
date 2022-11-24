@@ -1,14 +1,27 @@
 import { Range, Position, TextDocument } from 'vscode';
+import { CommentSyntax } from './SyntaxMap';
+
+export type CommentRange = {
+  start: Position,
+  contentStart: Position,
+  contentEnd: Position,
+  end: Position,
+};
 
 export class DocumentMap {
-  private document: TextDocument;
+  readonly document: TextDocument;
   readonly bounds: Range;
 
-  constructor(document: TextDocument, range?: Range) {
+  constructor(private commentSyntax: CommentSyntax, document: TextDocument, range?: Range) {
     if (range !== undefined && !document.validateRange(range)) throw new Error("Invalid range");
     const lastLine = document.lineCount - 1;
     this.bounds = range ?? new Range(0, 0, lastLine, document.lineAt(lastLine).text.length);
     this.document = document;
+  }
+
+  subRange(range: Range): DocumentMap {
+    if (!this.bounds.contains(range)) throw new Error("Invalid range");
+    return new DocumentMap(this.commentSyntax, this.document, range);
   }
 
   count(): number {
@@ -74,6 +87,50 @@ export class DocumentMap {
       anchor = new Position(anchor.line + 1, 0);
     }
     return undefined;
+  }
+
+  nextComment(after?: Position): CommentRange | undefined {
+    const hasBlock = this.commentSyntax.blockStart !== undefined && this.commentSyntax.blockEnd !== undefined;
+    const lineStart = this.positionOf((line, character) => line.indexOf(this.commentSyntax.line, character), after);
+    const blockStart = !hasBlock ? undefined : this.positionOf((line, character) => line.indexOf(this.commentSyntax.blockStart!, character), after);
+    const blockFirst = blockStart !== undefined && (lineStart === undefined || lineStart.isAfter(blockStart));
+    if (blockFirst) {
+      const blockEnd = this.positionOf((line, character) => line.indexOf(this.commentSyntax.blockEnd!, character), blockStart);
+      return {
+        start: blockStart,
+        contentStart: this.move(blockStart, this.commentSyntax.blockStart!.length),
+        contentEnd: blockEnd ? this.move(blockEnd, -1) : this.bounds.end,
+        end: blockEnd ? this.move(blockEnd, this.commentSyntax.blockEnd!.length - 1) : this.bounds.end,
+      };
+    }
+    else if (lineStart === undefined)
+      return undefined;
+    else {
+      let finalLine = lineStart.line;
+      do {
+        const hasLineComment = this.text(finalLine + 1).indexOf(this.commentSyntax.line) !== -1;
+        if (!hasLineComment) break;
+        finalLine++;
+      }
+      while (true);
+      return {
+        start: lineStart,
+        contentStart: this.move(lineStart, this.commentSyntax.line.length),
+        contentEnd: this.endOfLine(finalLine),
+        end: this.endOfLine(finalLine),
+      };
+    }
+  }
+
+  forEachComment(callback: (comment: CommentRange) => void) {
+    let anchor = this.bounds.start;
+    while (anchor.isBefore(this.bounds.end)) {
+      const comment = this.nextComment(anchor);
+      if (!comment)
+        break;
+      callback(comment);
+      anchor = this.move(comment.end, 1);
+    }
   }
 
   endOfLine(line: number): Position {
