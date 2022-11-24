@@ -75,7 +75,7 @@ export class Chunk {
 
 function removeFromArray<T>(array: T[], value: T): void {
   const index = array.indexOf(value);
-  array.slice(index, index);
+  array.splice(index, 1);
 }
 
 type ChunkKey = string;
@@ -94,25 +94,26 @@ class WatchedMap {
     const key = chunk.key();
     this.activeWatches.set(key, (this.activeWatches.get(key) ?? 0) + 1);
     const documentKey = chunk.documentKey();
-    const ranges = (this.documentChunks.get(documentKey) ?? []);
-    ranges.push(key);
-    this.documentChunks.set(documentKey, ranges);
+    const chunks = (this.documentChunks.get(documentKey) ?? []);
+    chunks.push(key);
+    this.documentChunks.set(documentKey, chunks);
   }
 
   remove(chunk: Chunk) {
     const key = chunk.key();
     const activeCount = (this.activeWatches.get(key) ?? 0) - 1;
     const documentKey = chunk.documentKey();
-    if (activeCount === 0) {
+
+    const chunks = this.documentChunks.get(documentKey)!;
+    removeFromArray(chunks, key);
+
+    if (activeCount === 0)
       this.activeWatches.delete(key);
-      const chunkKeys = this.documentChunks.get(documentKey)!;
-      removeFromArray(chunkKeys, key);
-      if (chunkKeys.length === 0)
-        this.documentChunks.delete(documentKey);
-    } else {
+    else
       this.activeWatches.set(key, activeCount);
-      removeFromArray(this.documentChunks.get(documentKey)!, key);
-    }
+
+    if (chunks.length === 0)
+      this.documentChunks.delete(documentKey);
   }
 
   allWatches(): Uri[] {
