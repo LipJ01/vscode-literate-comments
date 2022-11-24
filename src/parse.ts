@@ -49,7 +49,7 @@ export function findMarkdown(map: DocumentMap): Array<[boolean, Range]> {
 
 export async function renderMarkdown(document: TextDocument, range?: Range) {
   const documentMap = new DocumentMap(document, range);
-  const uriPrefix = encodeURISegment(parentUri(document.uri).toString(true  ));
+  const baseUri = parentUri(document.uri);
   
   let content = '';
 
@@ -57,14 +57,14 @@ export async function renderMarkdown(document: TextDocument, range?: Range) {
     const text = documentMap.textInRange(range);
     if (text.length > 0) {
       const correctedText = text.replace(/!\[([.^\[\]]*?)\]\((.*)\)/g, (match: string, name: string, path: string) => {
+        let correctedPath: string;
         if (hasScheme(path))
-          return match;
-        else if (isAbsolute(path)) {
-          const encodedPath = encodeURISegment(Uri.file(path).toString(true));
-          return `![${name}](${encodedPath})`;
-        }
+          correctedPath = path;
+        else if (isAbsolute(path))
+          correctedPath = encodeURISegment(Uri.file(path).toString(true));
         else
-          return `![${name}](${uriPrefix}${encodeURISegment('/' + path)})`;
+          correctedPath = encodeURISegment(Uri.joinPath(baseUri, path).toString(true));
+        return `![${name}](${correctedPath})`;
       });
       content += correctedText;
       content += "\n";
