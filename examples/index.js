@@ -1,13 +1,16 @@
-/*
-Relative: ![](quadratic.png)
 
-Link: ![](https://i.imgur.com/y7KUicx.jpeg)
+// Relative: ![](
+//   quadratic.png
+// )
+
+/*
+Link: ![](https://i.imgur.com/Ei9H3Vo.jpeg)
 
 Absolute: ![](D:\programming\md-comments\examples\quadratic.png)
 */
 
 // 1. Hi
-// 2. Here
+const v = 1; // 2. Here
 // 3. I am
 
 function quadratic(x) {

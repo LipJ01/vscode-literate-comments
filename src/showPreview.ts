@@ -1,4 +1,4 @@
-import { commands, Disposable, Range, Tab, TextDocument, Uri, ViewColumn, window, workspace } from "vscode";
+import { commands, Disposable, Range, Tab, TextDocument, Uri, ViewColumn, window } from "vscode";
 import { Chunk, MarkdownFileProvider } from "./MarkdownFileProvider";
 
 function isMarkdownPreviewTab(tab: Tab): boolean {

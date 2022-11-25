@@ -1,7 +1,8 @@
 import { Range, Position, TextDocument } from 'vscode';
 import { CommentSyntax } from './SyntaxMap';
 
-export type CommentRange = {
+export type CommentGroup = {
+  block: boolean,
   start: Position,
   contentStart: Position,
   contentEnd: Position,
@@ -19,39 +20,42 @@ export class DocumentMap {
     this.document = document;
   }
 
-  subRange(range: Range): DocumentMap {
-    if (!this.bounds.contains(range)) throw new Error("Invalid range");
-    return new DocumentMap(this.commentSyntax, this.document, range);
-  }
-
-  count(): number {
+  private count(): number {
     return this.document.lineCount;
   }
 
-  length(line: number) {
+  private length(line: number) {
     return this.document.lineAt(line).text.length;
   }
 
-  text(line: number) {
+  private text(line: number) {
     return this.document.lineAt(line).text;
   }
 
-  textInRange(range: Range, lineSeparator: string = "\n") {
-    if (!this.bounds.contains(range)) throw new Error("Invalid range");
-    if (range.isSingleLine)
-      return this.text(range.start.line)
-        .substring(range.start.character, range.end.character + 1);
+  textInRange(start: Position, end: Position, lineSeparator: string = "\n") {
+    if (!this.bounds.contains(start) || !this.bounds.contains(end)) throw new Error("Invalid range");
+    if (start.isAfter(end)) return '';
+    if (start.line === end.line)
+      return this.text(start.line)
+        .substring(start.character, end.character + 1);
 
-    let text = this.text(range.start.line)
-      .substring(range.start.character);
+    let text = this.text(start.line)
+      .substring(start.character);
     text += lineSeparator;
-    for (let line = range.start.line + 1; line < range.end.line; line++) {
+    for (let line = start.line + 1; line < end.line; line++) {
       text += this.text(line);
       text += lineSeparator;
     }
-    text += this.text(range.end.line)
-      .substring(0, range.end.character + 1);
+    text += this.text(end.line)
+      .substring(0, end.character + 1);
     return text;
+  }
+
+  onlyWhitespaceBetween(start: Position, end: Position) {
+    start = this.move(start, 1);
+    end = this.move(end, -1);
+    const textBetween = this.textInRange(start, end);
+    return /^\s*$/g.test(textBetween);
   }
 
   move(position: Position, distance: number): Position {
@@ -72,13 +76,7 @@ export class DocumentMap {
     return new Position(line, remainingDistance);
   }
 
-  wordAt(position: Position): string | undefined {
-    const range = this.document.getWordRangeAtPosition(position);
-    if (!range) return undefined;
-    return this.textInRange(range);
-  }
-
-  positionOf(query: (line: string, character: number) => number, after?: Position): Position | undefined {
+  private positionOf(query: (line: string, character: number) => number, after?: Position): Position | undefined {
     let anchor = after ?? this.bounds.start;
     if (!this.bounds.contains(anchor)) throw new Error("Invalid position");
     while (this.bounds.contains(anchor)) {
@@ -89,7 +87,7 @@ export class DocumentMap {
     return undefined;
   }
 
-  nextComment(after?: Position): CommentRange | undefined {
+  private nextComment(after?: Position): CommentGroup | undefined {
     const hasBlock = this.commentSyntax.blockStart !== undefined && this.commentSyntax.blockEnd !== undefined;
     const lineStart = this.positionOf((line, character) => line.indexOf(this.commentSyntax.line, character), after);
     const blockStart = !hasBlock ? undefined : this.positionOf((line, character) => line.indexOf(this.commentSyntax.blockStart!, character), after);
@@ -97,6 +95,7 @@ export class DocumentMap {
     if (blockFirst) {
       const blockEnd = this.positionOf((line, character) => line.indexOf(this.commentSyntax.blockEnd!, character), blockStart);
       return {
+        block: true,
         start: blockStart,
         contentStart: this.move(blockStart, this.commentSyntax.blockStart!.length),
         contentEnd: blockEnd ? this.move(blockEnd, -1) : this.bounds.end,
@@ -106,31 +105,39 @@ export class DocumentMap {
     else if (lineStart === undefined)
       return undefined;
     else {
-      let finalLine = lineStart.line;
-      do {
-        const hasLineComment = this.text(finalLine + 1).indexOf(this.commentSyntax.line) !== -1;
-        if (!hasLineComment) break;
-        finalLine++;
-      }
-      while (true);
       return {
+        block: false,
         start: lineStart,
         contentStart: this.move(lineStart, this.commentSyntax.line.length),
-        contentEnd: this.endOfLine(finalLine),
-        end: this.endOfLine(finalLine),
+        contentEnd: this.endOfLine(lineStart.line),
+        end: this.endOfLine(lineStart.line),
       };
     }
   }
 
-  forEachComment(callback: (comment: CommentRange) => void) {
+  groupComments() {
+    const commentGroups: CommentGroup[][] = [];
     let anchor = this.bounds.start;
     while (anchor.isBefore(this.bounds.end)) {
       const comment = this.nextComment(anchor);
       if (!comment)
         break;
-      callback(comment);
+
+      const lastGroup = commentGroups[commentGroups.length - 1];
+      const lastComment = !lastGroup ? undefined : lastGroup[lastGroup.length - 1];
+      if (
+        lastComment !== undefined &&
+        !lastComment.block &&
+        !comment.block &&
+        this.onlyWhitespaceBetween(lastComment.end, comment.start)
+      )
+        lastGroup.push(comment);
+      else  
+        commentGroups.push([comment]);
+
       anchor = this.move(comment.end, 1);
     }
+    return commentGroups;
   }
 
   endOfLine(line: number): Position {

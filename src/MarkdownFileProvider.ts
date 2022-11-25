@@ -1,7 +1,7 @@
 import { Disposable, Event, EventEmitter, FileChangeEvent, FileChangeType, FileStat, FileSystemError, FileSystemProvider, FileType, Position, Range, Uri, workspace } from "vscode";
 import { SyntaxMap } from "./SyntaxMap";
 import { DocumentMap } from "./DocumentMap";
-import { renderMarkdown } from "./parse";
+import { renderMarkdown } from "./renderMarkdown";
 import { decodeURISegment, encodeURISegment } from "./uriUtils";
 
 export const SCHEME = "comments-as-markdown";

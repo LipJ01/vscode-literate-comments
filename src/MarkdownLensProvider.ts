@@ -3,6 +3,15 @@ import { SyntaxMap } from './SyntaxMap';
 import { Configuration } from './configuration';
 import { DocumentMap } from './DocumentMap';
 
+function findLensRanges(map: DocumentMap) {
+  const groups = map.groupComments();
+  return groups.map(group => {
+    const first = group[0];
+    const last = group[group.length - 1];
+    return new Range(first.start, last.end);
+  })
+}
+
 export class MarkdownLensProvider implements CodeLensProvider {
   constructor(private syntaxMap: SyntaxMap) {}
 
@@ -13,10 +22,8 @@ export class MarkdownLensProvider implements CodeLensProvider {
     const commentSyntax = await this.syntaxMap.commentSyntax(document.languageId);
 
     const documentMap = new DocumentMap(commentSyntax, document);
-    const ranges: Range[] = [];
-    documentMap.forEachComment(comment => ranges.push(new Range(comment.start, comment.end)));
 
-    return ranges.map(range => new CodeLens(range, {
+    return findLensRanges(documentMap).map(range => new CodeLens(range, {
       title: "MarkdownLens",
       tooltip: "Preview",
       command: "comments-as-markdown.codeLensPreview",
