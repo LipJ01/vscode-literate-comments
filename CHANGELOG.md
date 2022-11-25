@@ -1,5 +1,10 @@
 # Change Log
 
+## [0.4]
+
+- Switch from custom syntax to comment detection
+- Support groups of single-line comments
+
 ## [0.3.2]
 
 - Fix local images

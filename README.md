@@ -5,7 +5,7 @@ by treating any document as Markdown.
 
 ## Features
 
-Run one of the "Comments as Markdown" commands. Any comments will be rendered as Markdown.
+Run one of the "Comments as Markdown" commands. Any comments will be rendered as Markdown.  
 The remaining code will be wrapped in code blocks.
 
 This extension utilizes the standard VS Code Markdown preview,
@@ -17,6 +17,10 @@ For example, [Mermaid support](https://marketplace.visualstudio.com/items?itemNa
 "comments-as-markdown.codeLens.enabled": Enables CodeLens to preview a single comment as Markdown
 
 ## Release Notes
+
+### 0.4
+
+Detect comments instead of relying on custom syntax
 
 ### 0.3
 
