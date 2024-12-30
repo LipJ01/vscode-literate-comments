@@ -7,7 +7,7 @@
 	"engines": {
 		"vscode": "^1.73.0"
 	},
-	"repository": "https://gitlab.com/uramer/vscode-literate-comments",
+	"repository": "https://github.com/LIPJ01/vscode-literate-comments",
 	"categories": [
 		"Visualization"
 	],
