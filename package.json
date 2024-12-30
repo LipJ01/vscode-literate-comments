@@ -1,80 +1,81 @@
 {
-  "name": "comments-as-markdown",
-  "publisher": "anton-uramer",
-  "displayName": "Comments as Markdown",
-  "description": "View source files as Markdown documents",
-  "version": "0.4.0",
-  "engines": {
-    "vscode": "^1.73.0"
-  },
-  "repository": "https://gitlab.com/uramer/vscode-comments-as-markdown",
-  "categories": [
-    "Visualization"
-  ],
-  "license": "MIT",
-  "keywords": [
-    "markdown",
-    "literate",
-    "programming",
-    "preview"
-  ],
-  "activationEvents": [
-    "onCommand:comments-as-markdown.preview",
-    "onCommand:comments-as-markdown.previewToSide",
-    "onCommand:comments-as-markdown.codeLensPreview",
-    "onStartupFinished"
-  ],
-  "main": "./dist/web/extension.js",
-  "browser": "./dist/web/extension.js",
-  "contributes": {
-    "commands": [
-      {
-        "title": "Preview",
-        "command": "comments-as-markdown.preview",
-        "category": "Comments as Markdown"
-      },
-      {
-        "title": "Preview to the side",
-        "command": "comments-as-markdown.previewToSide",
-        "category": "Comments as Markdown"
-      }
-    ],
-    "configuration": {
-      "title": "Comments as Markdown",
-      "properties": {
-        "comments-as-markdown.codeLens.enabled": {
-          "type": "boolean",
-          "default": true,
-          "description": "Enable CodeLens for detected Markdown blocks"
-        }
-      }
-    }
-  },
-  "scripts": {
-    "pretest": "npm run compile-web",
-    "vscode:prepublish": "npm run package-web",
-    "compile-web": "webpack",
-    "watch-web": "webpack --watch",
-    "package-web": "webpack --mode production --devtool hidden-source-map",
-    "lint": "eslint src --ext ts",
-    "run-in-browser": "vscode-test-web --browserType=chromium --extensionDevelopmentPath=. ."
-  },
-  "devDependencies": {
-    "@types/mocha": "^10.0.0",
-    "@types/vscode": "^1.73.0",
-    "@types/webpack-env": "^1.18.0",
-    "@typescript-eslint/eslint-plugin": "^5.42.0",
-    "@typescript-eslint/parser": "^5.42.0",
-    "assert": "^2.0.0",
-    "eslint": "^8.26.0",
-    "mocha": "^10.1.0",
-    "process": "^0.11.10",
-    "ts-loader": "^9.4.1",
-    "typescript": "^4.8.4",
-    "webpack": "^5.74.0",
-    "webpack-cli": "^4.10.0"
-  },
-  "dependencies": {
-    "json5": "2.2.1"
-  }
+	"name": "literate-comments",
+	"publisher": "jack-lippold",
+	"displayName": "Literate Comments",
+	"description": "View source files 'Medium style' by treating multiline comments as Markdown",
+	"version": "0.5.0",
+	"engines": {
+		"vscode": "^1.73.0"
+	},
+	"repository": "https://gitlab.com/uramer/vscode-literate-comments",
+	"categories": [
+		"Visualization"
+	],
+	"license": "MIT",
+	"keywords": [
+		"markdown",
+		"literate",
+		"programming",
+		"preview"
+	],
+	"activationEvents": [
+		"onCommand:literate-comments.preview",
+		"onCommand:literate-comments.previewToSide",
+		"onCommand:literate-comments.codeLensPreview",
+		"onStartupFinished"
+	],
+	"main": "./dist/web/extension.js",
+	"browser": "./dist/web/extension.js",
+	"contributes": {
+		"commands": [
+			{
+				"title": "Preview",
+				"command": "literate-comments.preview",
+				"category": "Literate Comments"
+			},
+			{
+				"title": "Preview to the side",
+				"command": "literate-comments.previewToSide",
+				"category": "Literate Comments"
+			}
+		],
+		"configuration": {
+			"title": "Literate Comments",
+			"properties": {
+				"literate-comments.codeLens.enabled": {
+					"type": "boolean",
+					"default": true,
+					"description": "Enable CodeLens for detected Markdown blocks"
+				}
+			}
+		}
+	},
+	"scripts": {
+		"pretest": "npm run compile-web",
+		"vscode:prepublish": "npm run package-web",
+		"compile-web": "webpack",
+		"watch-web": "webpack --watch",
+		"package-web": "webpack --mode production --devtool hidden-source-map",
+		"lint": "eslint src --ext ts",
+		"run-in-browser": "vscode-test-web --browserType=chromium --extensionDevelopmentPath=. ."
+	},
+	"devDependencies": {
+		"@types/mocha": "^10.0.0",
+		"@types/node": "^22.10.2",
+		"@types/vscode": "^1.73.0",
+		"@types/webpack-env": "^1.18.0",
+		"@typescript-eslint/eslint-plugin": "^5.42.0",
+		"@typescript-eslint/parser": "^5.42.0",
+		"assert": "^2.0.0",
+		"eslint": "^8.26.0",
+		"mocha": "^10.1.0",
+		"process": "^0.11.10",
+		"ts-loader": "^9.4.1",
+		"typescript": "^4.8.4",
+		"webpack": "^5.74.0",
+		"webpack-cli": "^4.10.0"
+	},
+	"dependencies": {
+		"json5": "2.2.1"
+	}
 }
